@@ -1,10 +1,20 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
 from . import models, schemas, crud, database
 
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
+
+# ✅ Add CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_credentials=True,
+    allow_methods=["*"],  # allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # allow all headers
+)
 
 # Dependency
 def get_db():
