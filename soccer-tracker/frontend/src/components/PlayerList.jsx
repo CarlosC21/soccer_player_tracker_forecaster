@@ -1,9 +1,19 @@
-// src/components/PlayerList.jsx
-import React from "react";
+import { useEffect, useState } from "react";
+import api from "../api";
+import PlayerStats from "./PlayerStats";
 
-export default function PlayerList({ players, loading, error }) {
-  if (loading) return <p>Loading players…</p>;
-  if (error) return <p style={{ color: "crimson" }}>{error}</p>;
+function PlayerList() {
+  const [players, setPlayers] = useState([]);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
+
+  const fetchPlayers = async () => {
+    const res = await api.get("/players");
+    setPlayers(res.data);
+  };
 
   return (
     <div>
@@ -11,10 +21,16 @@ export default function PlayerList({ players, loading, error }) {
       <ul>
         {players.map((p) => (
           <li key={p.id}>
-            {p.name} ({p.age}) — {p.position} — {p.team}
+            <button onClick={() => setSelectedPlayer(p.id)}>
+              {p.name} ({p.position})
+            </button>
           </li>
         ))}
       </ul>
+
+      {selectedPlayer && <PlayerStats playerId={selectedPlayer} />}
     </div>
   );
 }
+
+export default PlayerList;
