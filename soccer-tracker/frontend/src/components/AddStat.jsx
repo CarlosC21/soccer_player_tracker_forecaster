@@ -1,6 +1,7 @@
 // frontend/src/components/AddStat.jsx
 import { useState } from "react";
-import api from "../api";
+import api from "../api/axios";
+
 
 function AddStat({ playerId, onStatAdded }) {
   const [form, setForm] = useState({

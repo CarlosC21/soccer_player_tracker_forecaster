@@ -1,27 +1,16 @@
-// src/components/AddPlayer.jsx
-import React, { useState } from "react";
+// src/components/EditPlayer.jsx
+import React, { useState, useEffect } from "react";
 
-export default function AddPlayer({ onAdd }) {
-  const [form, setForm] = useState({
-    name: "",
-    age: "",
-    position: "",
-    nationality: "",
-    team: "",
-  });
+export default function EditPlayer({ player, onUpdate, onCancel }) {
+  const [form, setForm] = useState(player);
+
+  useEffect(() => {
+    setForm(player);
+  }, [player]);
 
   const submit = async (e) => {
     e.preventDefault();
-
-    // ✅ Ensure safe form submission
-    const cleanForm = {
-      ...form,
-      age: form.age ? Number(form.age) : 0,
-    };
-
-    await onAdd(cleanForm);
-
-    setForm({ name: "", age: "", position: "", nationality: "", team: "" });
+    await onUpdate(player.id, form);
   };
 
   return (
@@ -32,7 +21,6 @@ export default function AddPlayer({ onAdd }) {
         onChange={(e) => setForm({ ...form, name: e.target.value })}
       />
       <input
-        type="number"
         placeholder="Age"
         value={form.age}
         onChange={(e) => setForm({ ...form, age: e.target.value })}
@@ -52,7 +40,10 @@ export default function AddPlayer({ onAdd }) {
         value={form.team}
         onChange={(e) => setForm({ ...form, team: e.target.value })}
       />
-      <button type="submit">Add Player</button>
+      <button type="submit">Update Player</button>
+      <button type="button" onClick={onCancel} style={{ marginLeft: 8 }}>
+        Cancel
+      </button>
     </form>
   );
 }

@@ -4,7 +4,7 @@ import AppPlayer from "./components/AppPlayer";
 
 function App() {
   return (
-    <div>
+    <div style={{ padding: "20px" }}>
       <AppPlayer />
     </div>
   );
