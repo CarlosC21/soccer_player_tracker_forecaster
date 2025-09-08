@@ -3,11 +3,13 @@ import React, { useEffect, useState } from "react";
 import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../api/axios";
 import AddPlayer from "./AddPlayer";
 import PlayerList from "./PlayerList";
+import PlayerDetail from "./PlayerDetail";
 
 export default function AppPlayer() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
 
   const fetchPlayers = async () => {
     try {
@@ -29,12 +31,10 @@ export default function AppPlayer() {
 
   const handleAdd = async (formValues) => {
     try {
-      // ✅ ensure `age` is a number, default 0
       const payload = {
         ...formValues,
         age: formValues.age ? Number(formValues.age) : 0,
       };
-
       const { data } = await createPlayer(payload);
       setPlayers((prev) => [...prev, data]);
     } catch (e) {
@@ -70,14 +70,25 @@ export default function AppPlayer() {
   return (
     <div>
       <h1>Soccer Player Tracker</h1>
-      <AddPlayer onAdd={handleAdd} />
-      <PlayerList
-        players={players}
-        loading={loading}
-        error={error}
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
-      />
+
+      {selectedPlayerId ? (
+        <PlayerDetail
+          playerId={selectedPlayerId}
+          onBack={() => setSelectedPlayerId(null)}
+        />
+      ) : (
+        <>
+          <AddPlayer onAdd={handleAdd} />
+          <PlayerList
+            players={players}
+            loading={loading}
+            error={error}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+            onSelectPlayer={(id) => setSelectedPlayerId(id)} // ✅ pass callback
+          />
+        </>
+      )}
     </div>
   );
 }

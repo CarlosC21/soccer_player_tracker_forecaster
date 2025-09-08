@@ -1,9 +1,8 @@
 // src/components/PlayerList.jsx
 import React, { useState } from "react";
-import PlayerStats from "./PlayerStats";
+import { Link } from "react-router-dom";
 
 export default function PlayerList({ players, loading, error, onUpdate, onDelete }) {
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     name: "",
@@ -79,9 +78,11 @@ export default function PlayerList({ players, loading, error, onUpdate, onDelete
               </>
             ) : (
               <>
-                <button onClick={() => setSelectedPlayer(p.id)}>
-                  {p.name} ({p.position}) - {p.team}
-                </button>
+                <Link to={`/players/${p.id}`} style={{ textDecoration: "none" }}>
+                  <button>
+                    {p.name} ({p.position}) - {p.team}
+                  </button>
+                </Link>
                 <button
                   onClick={() => handleEditClick(p)}
                   style={{ marginLeft: 8 }}
@@ -99,9 +100,6 @@ export default function PlayerList({ players, loading, error, onUpdate, onDelete
           </li>
         ))}
       </ul>
-
-      {/* ✅ Show stats when a player is selected */}
-      {selectedPlayer && <PlayerStats playerId={selectedPlayer} />}
     </div>
   );
 }

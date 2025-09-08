@@ -7,7 +7,7 @@ import {
   getPlayer,
 } from "../api/axios";
 
-export default function PlayerStats({ playerId }) {
+export default function PlayerStats({ playerId, onStatsChange }) {
   const [player, setPlayer] = useState(null);
   const [stats, setStats] = useState([]);
   const [form, setForm] = useState({
@@ -27,6 +27,7 @@ export default function PlayerStats({ playerId }) {
 
       const { data: statsData } = await getStats(playerId);
       setStats(statsData || []);
+      if (onStatsChange) onStatsChange(statsData || []);
     };
     load();
   }, [playerId]);
@@ -44,11 +45,15 @@ export default function PlayerStats({ playerId }) {
 
     if (editingId) {
       const { data } = await updateStat(playerId, editingId, payload);
-      setStats((prev) => prev.map((s) => (s.id === editingId ? data : s)));
+      const updated = stats.map((s) => (s.id === editingId ? data : s));
+      setStats(updated);
+      if (onStatsChange) onStatsChange(updated);
       setEditingId(null);
     } else {
       const { data } = await createStat(playerId, payload);
-      setStats((prev) => [...prev, data]);
+      const updated = [...stats, data];
+      setStats(updated);
+      if (onStatsChange) onStatsChange(updated);
     }
 
     setForm({
@@ -68,7 +73,9 @@ export default function PlayerStats({ playerId }) {
 
   const handleDelete = async (id) => {
     await deleteStat(playerId, id);
-    setStats((prev) => prev.filter((s) => s.id !== id));
+    const updated = stats.filter((s) => s.id !== id);
+    setStats(updated);
+    if (onStatsChange) onStatsChange(updated);
   };
 
   if (!player) return <p>Loading player...</p>;
@@ -113,9 +120,7 @@ export default function PlayerStats({ playerId }) {
           type="number"
           placeholder="Tackles Won"
           value={form.tackles_won}
-          onChange={(e) =>
-            setForm({ ...form, tackles_won: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, tackles_won: e.target.value })}
         />
         <button type="submit">{editingId ? "Update Stat" : "Add Stat"}</button>
       </form>
