@@ -116,6 +116,56 @@ def delete_player_stat(player_id: int, stat_id: int, db: Session = Depends(get_d
     return {"message": f"Stat {stat_id} deleted successfully"}
 
 # ------------------------------
+# Radar Chart endpoint
+# ------------------------------
+@app.get("/players/{player_id}/radar")
+def get_radar_data(player_id: int, db: Session = Depends(get_db)):
+    """
+    Returns radar chart data: player averages vs. team averages
+    across key scouting metrics in array format for frontend.
+    """
+    player = crud.get_player(db, player_id)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    # Get player's stats
+    player_stats = crud.get_stats_for_player(db, player_id)
+    if not player_stats:
+        raise HTTPException(status_code=404, detail="No stats for this player")
+
+    def avg(values):
+        return sum(values) / len(values) if values else 0
+
+    player_avg = {
+        "goals": avg([s.goals for s in player_stats]),
+        "assists": avg([s.assists for s in player_stats]),
+        "touches": avg([s.touches for s in player_stats]),
+        "tackles_won": avg([s.tackles_won for s in player_stats]),
+    }
+
+    # Team averages
+    team_players = db.query(models.Player).filter(models.Player.team == player.team).all()
+    team_ids = [p.id for p in team_players]
+    team_stats = db.query(models.Stat).filter(models.Stat.player_id.in_(team_ids)).all()
+
+    team_avg = {
+        "goals": avg([s.goals for s in team_stats]),
+        "assists": avg([s.assists for s in team_stats]),
+        "touches": avg([s.touches for s in team_stats]),
+        "tackles_won": avg([s.tackles_won for s in team_stats]),
+    }
+
+    # ✅ Transform into frontend-friendly array
+    radar_data = [
+        {"metric": "Goals", "player": player_avg["goals"], "team_avg": team_avg["goals"]},
+        {"metric": "Assists", "player": player_avg["assists"], "team_avg": team_avg["assists"]},
+        {"metric": "Touches", "player": player_avg["touches"], "team_avg": team_avg["touches"]},
+        {"metric": "Tackles Won", "player": player_avg["tackles_won"], "team_avg": team_avg["tackles_won"]},
+    ]
+
+    return radar_data
+
+# ------------------------------
 # ML Prediction endpoints
 # ------------------------------
 class StatIn(BaseModel):
