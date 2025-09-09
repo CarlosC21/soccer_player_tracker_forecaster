@@ -1,5 +1,5 @@
 # backend/main.py
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -155,7 +155,6 @@ def get_radar_data(player_id: int, db: Session = Depends(get_db)):
         "tackles_won": avg([s.tackles_won for s in team_stats]),
     }
 
-    # ✅ Transform into frontend-friendly array
     radar_data = [
         {"metric": "Goals", "player": player_avg["goals"], "team_avg": team_avg["goals"]},
         {"metric": "Assists", "player": player_avg["assists"], "team_avg": team_avg["assists"]},
@@ -182,10 +181,6 @@ class PredictRequest(BaseModel):
 
 @app.post("/predict")
 def run_prediction(req: PredictRequest):
-    """
-    Runs both injury risk + investment forecast based on given stats (payload).
-    This endpoint doesn't require the player to exist in DB - it uses the provided stats list.
-    """
     try:
         stats_df = pd.DataFrame([s.dict() for s in req.stats])
         if stats_df.empty:
@@ -217,14 +212,9 @@ def run_prediction(req: PredictRequest):
 
 @app.post("/predict/injury/{player_id}")
 def predict_injury_for_player(player_id: int, db: Session = Depends(get_db)):
-    """
-    Run injury prediction for a player using stats stored in DB.
-    """
-    # get stats from DB
     stats = crud.get_stats_for_player(db, player_id)
     if not stats:
         raise HTTPException(status_code=404, detail="No stats found for this player")
-    # convert stats (ORM objects) to dataframe
     rows = []
     for s in stats:
         rows.append({
@@ -242,9 +232,6 @@ def predict_injury_for_player(player_id: int, db: Session = Depends(get_db)):
 
 @app.post("/predict/investment/{player_id}")
 def predict_investment_for_player(player_id: int, db: Session = Depends(get_db), horizon_days: int = 180):
-    """
-    Run investment forecast for a player using stats stored in DB.
-    """
     stats = crud.get_stats_for_player(db, player_id)
     if not stats:
         raise HTTPException(status_code=404, detail="No stats found for this player")
@@ -261,3 +248,102 @@ def predict_investment_for_player(player_id: int, db: Session = Depends(get_db),
     stats_df = pd.DataFrame(rows)
     result = predict_investment_from_stats_df(stats_df, horizon_days=horizon_days)
     return {"player_id": player_id, "horizon_days": horizon_days, **result}
+
+# ------------------------------
+# Scouting Insights endpoints
+# ------------------------------
+@app.get("/insights/top_undervalued")
+def get_top_undervalued(
+    max_age: int = Query(21, description="Maximum age to consider (inclusive)"),
+    top_n: int = Query(5, description="Number of top players to return"),
+    db: Session = Depends(get_db),
+):
+    players = crud.get_players(db)
+    scored = []
+
+    for p in players:
+        try:
+            age = getattr(p, "age", None)
+            if age is None or age > max_age:
+                continue
+
+            stats = crud.get_stats_for_player(db, p.id)
+            if stats:
+                minutes_list = [getattr(s, "minutes_played", 0) or 0 for s in stats]
+                avg_minutes = float(sum(minutes_list)) / len(minutes_list)
+            else:
+                avg_minutes = 0.0
+
+            inv = predict_investment(p.id, db)
+            predicted_pct = float(inv.get("predicted_pct_change", 0.0))
+
+            age_boost = 1.0 + max(0.0, (25.0 - float(age)) / 100.0)
+            minutes_penalty = float(avg_minutes) / 1000.0
+
+            undervalued_score = predicted_pct * age_boost - minutes_penalty
+
+            scored.append({
+                "player_id": p.id,
+                "name": getattr(p, "name", None),
+                "age": age,
+                "team": getattr(p, "team", None),
+                "predicted_pct_change": predicted_pct,
+                "avg_minutes": avg_minutes,
+                "undervalued_score": float(undervalued_score),
+                "investment_method": inv.get("method", None),
+            })
+        except Exception:
+            continue
+
+    scored_sorted = sorted(scored, key=lambda x: x["undervalued_score"], reverse=True)
+    return {"count": len(scored_sorted), "top_n": top_n, "players": scored_sorted[:top_n]}
+
+@app.get("/insights/injury_compare/{player_id}")
+def compare_injury_to_team(player_id: int, db: Session = Depends(get_db)):
+    player = crud.get_player(db, player_id)
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    try:
+        player_prob = float(predict_injury(player_id, db))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed computing player injury: {e}")
+
+    team_players = db.query(models.Player).filter(models.Player.team == player.team).all()
+    if not team_players:
+        raise HTTPException(status_code=404, detail="No team players found to compare")
+
+    probs = []
+    for tp in team_players:
+        try:
+            prob = float(predict_injury(tp.id, db))
+            probs.append(prob)
+        except Exception:
+            continue
+
+    team_avg = float(sum(probs) / len(probs)) if probs else 0.0
+    abs_diff = player_prob - team_avg
+    rel_diff = None
+    if team_avg != 0:
+        rel_diff = abs_diff / team_avg
+
+    if team_avg == 0:
+        message = "Not enough team data to compute comparison."
+    else:
+        pct = (rel_diff or 0) * 100
+        if rel_diff is not None and rel_diff > 0.20:
+            message = f"This player has a {pct:.1f}% higher injury probability than team average."
+        elif rel_diff is not None and rel_diff < -0.20:
+            message = f"This player has a {abs(pct):.1f}% lower injury probability than team average."
+        else:
+            message = "Player injury risk is close to team average."
+
+    return {
+        "player_id": player_id,
+        "player_name": getattr(player, "name", None),
+        "player_probability": player_prob,
+        "team_average_probability": team_avg,
+        "absolute_difference": abs_diff,
+        "relative_difference": rel_diff,
+        "message": message,
+    }

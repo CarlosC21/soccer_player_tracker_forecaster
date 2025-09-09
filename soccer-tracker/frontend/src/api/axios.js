@@ -52,6 +52,17 @@ export const getInvestmentPredictionByPlayer = (playerId, horizon_days = 180) =>
   });
 
 // =========================
+// Insights
+// =========================
+export const getTopUndervalued = (maxAge = 21, topN = 5) =>
+  axios.get(`${API_URL}/insights/top_undervalued`, {
+    params: { max_age: maxAge, top_n: topN },
+  });
+
+export const compareInjuryToTeam = (playerId) =>
+  axios.get(`${API_URL}/insights/injury_compare/${playerId}`);
+
+// =========================
 // Helper: generic axios instance (optional)
 // =========================
 export const apiInstance = axios.create({

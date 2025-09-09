@@ -5,7 +5,7 @@ import { getPlayer, getStats } from "../api/axios";
 import PlayerStats from "./PlayerStats";
 import PerformanceChart from "./PerformanceChart";
 import PlayerRadarChart from "./RadarChart";
-import PredictionPanel from "./PredictionPanel"; // ✅ new import
+import PredictionPanel from "./PredictionPanel";
 
 export default function PlayerDetail() {
   const { id } = useParams(); // route: /players/:id
@@ -13,7 +13,7 @@ export default function PlayerDetail() {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0); // ✅ for radar + predictions refresh
+  const [refreshKey, setRefreshKey] = useState(0); // trigger radar + predictions refresh
 
   const load = async () => {
     try {
@@ -41,7 +41,7 @@ export default function PlayerDetail() {
   // Called by PlayerStats when stats change (add/edit/delete)
   const handleStatsChange = (newStats) => {
     setStats(newStats || []);
-    setRefreshKey((k) => k + 1); // 🚀 trigger radar + predictions refresh
+    setRefreshKey((k) => k + 1); // trigger radar + predictions refresh
   };
 
   if (loading) return <p>Loading player...</p>;
@@ -61,8 +61,7 @@ export default function PlayerDetail() {
         <div>
           <h2 style={{ margin: 0 }}>{player.name}</h2>
           <div style={{ color: "#555" }}>
-            Age: {player.age} • {player.position} • {player.team} •{" "}
-            {player.nationality}
+            Age: {player.age} • {player.position} • {player.team} • {player.nationality}
           </div>
         </div>
         <div>
@@ -90,11 +89,11 @@ export default function PlayerDetail() {
         </div>
 
         <aside>
-          {/* ✅ New prediction panel */}
+          {/* Prediction panel */}
           <PredictionPanel playerId={id} refreshKey={refreshKey} />
 
           <div style={{ marginTop: 20 }}>
-            {/* ✅ Radar chart refreshes automatically when stats change */}
+            {/* Radar chart refreshes automatically when stats change */}
             <PlayerRadarChart playerId={id} refreshKey={refreshKey} />
           </div>
         </aside>
