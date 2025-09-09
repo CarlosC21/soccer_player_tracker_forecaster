@@ -3,9 +3,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getPlayer, getStats } from "../api/axios";
 import PlayerStats from "./PlayerStats";
-import PredictionCard from "./PredictionCard";
 import PerformanceChart from "./PerformanceChart";
 import PlayerRadarChart from "./RadarChart";
+import PredictionPanel from "./PredictionPanel"; // ✅ new import
 
 export default function PlayerDetail() {
   const { id } = useParams(); // route: /players/:id
@@ -13,7 +13,7 @@ export default function PlayerDetail() {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0); // ✅ for radar auto-refresh
+  const [refreshKey, setRefreshKey] = useState(0); // ✅ for radar + predictions refresh
 
   const load = async () => {
     try {
@@ -41,7 +41,7 @@ export default function PlayerDetail() {
   // Called by PlayerStats when stats change (add/edit/delete)
   const handleStatsChange = (newStats) => {
     setStats(newStats || []);
-    setRefreshKey((k) => k + 1); // 🚀 trigger radar refresh
+    setRefreshKey((k) => k + 1); // 🚀 trigger radar + predictions refresh
   };
 
   if (loading) return <p>Loading player...</p>;
@@ -90,7 +90,9 @@ export default function PlayerDetail() {
         </div>
 
         <aside>
-          <PredictionCard playerId={id} stats={stats} />
+          {/* ✅ New prediction panel */}
+          <PredictionPanel playerId={id} refreshKey={refreshKey} />
+
           <div style={{ marginTop: 20 }}>
             {/* ✅ Radar chart refreshes automatically when stats change */}
             <PlayerRadarChart playerId={id} refreshKey={refreshKey} />
