@@ -3,4 +3,4 @@ Soccer Player Tracker Forecaster
 - Highlights: Sports Analytics + Data Modeling + Python/SQL
 
 Check Wiki for Deployment Documentation
-- 
+- https://github.com/CarlosC21/soccer_player_tracker_forecaster/wiki/Deployment-Documentation
